@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 20)
 
 set(headers 
     src/NFCListener.hh
+    src/MPDConnection.hh
+    src/ytdl_interface.hh
 )
 
 set(sources
@@ -14,5 +16,5 @@ set(sources
 
 # add the executable
 add_executable(radio ${headers} ${sources})
-target_link_libraries(radio PRIVATE nfc freefare)
+target_link_libraries(radio PRIVATE nfc freefare mpdclient)
 target_include_directories(radio PRIVATE ./src)

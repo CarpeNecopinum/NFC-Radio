@@ -35,7 +35,11 @@ NFCListener::NFCListener()
     if (!mContext)
         throw std::runtime_error("Could not init NFC context.");
 
-    mDevice = nfc_open(mContext, nullptr);
+    auto n_tries = 10;
+    do
+    {
+        mDevice = nfc_open(mContext, nullptr);
+    } while (!mDevice && n_tries--);
     if (!mDevice)
         throw std::runtime_error("Could not open device.");
 
@@ -157,10 +161,17 @@ void NFCListener::handle_message(uint8_t *data, size_t n)
 
     auto type = reader.read(header.type_len);
     auto id = len_id ? reader.read(len_id) : "";
+    auto proto = URIProtocol{};
+    if (type == "U")
+    {
+        proto = reader.read<URIProtocol>();
+        len_payload -= 1;
+    }
     auto payload = reader.read(len_payload);
 
     message.trigger({std::move(type),
                      std::move(id),
+                     proto,
                      std::move(payload)});
 
     if (reader.rest())

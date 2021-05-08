@@ -4,10 +4,20 @@
 #include <nfc/nfc-types.h>
 #include <freefare.h>
 
+enum class URIProtocol : uint8_t
+{
+    NONE,
+    HTTP_WWW,
+    HTTPS_WWW,
+    HTTP,
+    HTTPS
+};
+
 struct Message
 {
     std::string type;
     std::string id;
+    URIProtocol uri_proto;
     std::string content;
 };
 
