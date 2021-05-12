@@ -3,6 +3,8 @@
 #include <nfc/nfc.h>
 #include <stdexcept>
 
+#include <iostream>
+
 #include <Reader.hh>
 
 static MifareClassicKey default_keys[] = {
@@ -50,15 +52,26 @@ NFCListener::NFCListener()
 
 void NFCListener::read_ultralight(MifareTag const &tag)
 {
+    const auto max_pages = 256;
+    MifareUltralightPage pages[max_pages] = {};
+
     mifare_ultralight_connect(tag);
 
-    MifareUltralightPage pages[64] = {};
+    // mifare_ultralight_read only does 16 pages, so we have to do the reading ourselves
     int page = 0;
-    while (mifare_ultralight_read(tag, page, &pages[page++]) != -1)
-        ;
-    page -= 1;
+    for (; page < max_pages; page += 4)
+    {
+        uint8_t cmd[] = {0x30, page};
+        auto res = (uint8_t *)(pages + page);
+        auto reply = nfc_initiator_transceive_bytes(mDevice, cmd, sizeof(cmd), res, 16, 0);
+        if (reply == -1)
+            break;
+    }
+    page -= 4;
 
-    handle_body((uint8_t *)pages, page * sizeof(MifareUltralightPage));
+    std::cout << page << std::endl;
+
+    handle_body((uint8_t *)(pages + 4), page * sizeof(MifareUltralightPage));
 }
 
 void NFCListener::read_classic(MifareTag const &tag)
@@ -97,8 +110,8 @@ void NFCListener::poll()
     auto type = freefare_get_tag_type(tag);
     switch (type)
     {
-    case ULTRALIGHT:
     case ULTRALIGHT_C:
+    case ULTRALIGHT:
         read_ultralight(tag);
         break;
     case CLASSIC_1K:
@@ -110,6 +123,10 @@ void NFCListener::poll()
 
 void NFCListener::handle_body(uint8_t *data, size_t n)
 {
+    auto f = fopen("dump.bin", "w");
+    fwrite(data, n, 1, f);
+    fclose(f);
+
     uint8_t tlv_type;
     uint16_t tlv_data_len;
     uint8_t *tlv_data;
